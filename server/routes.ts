@@ -1,7 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, simpleAuth } from "./replitAuth";
+
 import { 
   insertProspectSchema, 
   insertSiteSchema, 
@@ -16,10 +17,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
-  // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  // Simple auth system
+  app.post('/api/auth/login', async (req, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const { email, password } = req.body;
+      
+      // Demo accounts - in production, these would be hashed passwords in database
+      const demoAccounts = {
+        'admin@yayedia.com': { password: 'admin123', role: 'administrateur', id: 'admin-1', firstName: 'Admin', lastName: 'YAYE DIA' },
+        'manager@yayedia.com': { password: 'manager123', role: 'responsable_commercial', id: 'manager-1', firstName: 'Manager', lastName: 'Commercial' },
+        'commercial@yayedia.com': { password: 'commercial123', role: 'commercial', id: 'commercial-1', firstName: 'Agent', lastName: 'Commercial' }
+      };
+
+      const account = demoAccounts[email as keyof typeof demoAccounts];
+      if (!account || account.password !== password) {
+        return res.status(401).json({ message: "Email ou mot de passe incorrect" });
+      }
+
+      // Create or update user in database
+      await storage.upsertUser({
+        id: account.id,
+        email: email,
+        firstName: account.firstName,
+        lastName: account.lastName,
+        role: account.role as any,
+        profileImageUrl: null,
+      });
+
+      // Set session
+      (req as any).session.userId = account.id;
+      (req as any).session.userEmail = email;
+      (req as any).session.userRole = account.role;
+
+      res.json({ 
+        success: true, 
+        user: { 
+          id: account.id, 
+          email, 
+          firstName: account.firstName, 
+          lastName: account.lastName, 
+          role: account.role 
+        } 
+      });
+    } catch (error) {
+      console.error("Login error:", error);
+      res.status(500).json({ message: "Erreur de connexion" });
+    }
+  });
+
+  app.post('/api/auth/logout', (req, res) => {
+    (req as any).session.destroy((err: any) => {
+      if (err) {
+        return res.status(500).json({ message: "Erreur de déconnexion" });
+      }
+      res.json({ success: true });
+    });
+  });
+
+  // Simple auth middleware
+  const simpleAuth = (req: any, res: any, next: any) => {
+    if (!req.session?.userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    req.user = {
+      id: req.session.userId,
+      email: req.session.userEmail,
+      role: req.session.userRole
+    };
+    next();
+  };
+
+  // Auth routes
+  app.get('/api/auth/user', simpleAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       res.json(user);
     } catch (error) {
@@ -29,7 +100,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Dashboard routes
-  app.get('/api/dashboard/stats', isAuthenticated, async (req, res) => {
+  app.get('/api/dashboard/stats', simpleAuth, async (req, res) => {
     try {
       const stats = await storage.getDashboardStats();
       res.json(stats);
@@ -39,7 +110,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/dashboard/activities', isAuthenticated, async (req, res) => {
+  app.get('/api/dashboard/activities', simpleAuth, async (req, res) => {
     try {
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
       const activities = await storage.getRecentActivities(limit);
@@ -51,7 +122,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Prospect routes
-  app.get('/api/prospects', isAuthenticated, async (req, res) => {
+  app.get('/api/prospects', simpleAuth, async (req, res) => {
     try {
       const filters = {
         status: req.query.status as string,
@@ -69,7 +140,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/prospects/:id', isAuthenticated, async (req, res) => {
+  app.get('/api/prospects/:id', simpleAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const prospect = await storage.getProspect(id);
@@ -83,7 +154,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/prospects', isAuthenticated, async (req: any, res) => {
+  app.post('/api/prospects', simpleAuth, async (req: any, res) => {
     try {
       const prospectData = insertProspectSchema.parse({
         ...req.body,
@@ -112,7 +183,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/prospects/:id', isAuthenticated, async (req: any, res) => {
+  app.put('/api/prospects/:id', simpleAuth, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
       const prospectData = insertProspectSchema.partial().parse(req.body);
@@ -139,7 +210,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/prospects/:id/assign', isAuthenticated, async (req: any, res) => {
+  app.post('/api/prospects/:id/assign', simpleAuth, async (req: any, res) => {
     try {
       const prospectId = parseInt(req.params.id);
       const { commercialId } = req.body;
@@ -163,7 +234,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Site routes
-  app.get('/api/sites', isAuthenticated, async (req, res) => {
+  app.get('/api/sites', simpleAuth, async (req, res) => {
     try {
       const filters = {
         isActive: req.query.isActive === 'true' ? true : req.query.isActive === 'false' ? false : undefined,
@@ -177,7 +248,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/sites/:id', isAuthenticated, async (req, res) => {
+  app.get('/api/sites/:id', simpleAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const site = await storage.getSite(id);
@@ -191,7 +262,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/sites', isAuthenticated, async (req: any, res) => {
+  app.post('/api/sites', simpleAuth, async (req: any, res) => {
     try {
       const siteData = insertSiteSchema.parse(req.body);
       const site = await storage.createSite(siteData);
@@ -216,7 +287,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/sites/:id/stats', isAuthenticated, async (req, res) => {
+  app.get('/api/sites/:id/stats', simpleAuth, async (req, res) => {
     try {
       const siteId = parseInt(req.params.id);
       const stats = await storage.getSiteStats(siteId);
@@ -228,7 +299,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Lot routes
-  app.get('/api/sites/:siteId/lots', isAuthenticated, async (req, res) => {
+  app.get('/api/sites/:siteId/lots', simpleAuth, async (req, res) => {
     try {
       const siteId = parseInt(req.params.siteId);
       const lots = await storage.getLotsBySite(siteId);
@@ -239,7 +310,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/lots/:id', isAuthenticated, async (req, res) => {
+  app.get('/api/lots/:id', simpleAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const lot = await storage.getLot(id);
@@ -253,7 +324,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/lots', isAuthenticated, async (req: any, res) => {
+  app.post('/api/lots', simpleAuth, async (req: any, res) => {
     try {
       const lotData = insertLotSchema.parse(req.body);
       const lot = await storage.createLot(lotData);
@@ -278,7 +349,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/lots/:id/reserve', isAuthenticated, async (req: any, res) => {
+  app.post('/api/lots/:id/reserve', simpleAuth, async (req: any, res) => {
     try {
       const lotId = parseInt(req.params.id);
       const { clientId, isTemporary } = req.body;
@@ -301,7 +372,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/lots/:id/release', isAuthenticated, async (req: any, res) => {
+  app.post('/api/lots/:id/release', simpleAuth, async (req: any, res) => {
     try {
       const lotId = parseInt(req.params.id);
       const lot = await storage.releaseLot(lotId);
@@ -323,7 +394,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Payment routes
-  app.get('/api/payments', isAuthenticated, async (req, res) => {
+  app.get('/api/payments', simpleAuth, async (req, res) => {
     try {
       const filters = {
         clientId: req.query.clientId ? parseInt(req.query.clientId as string) : undefined,
@@ -341,7 +412,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/payments', isAuthenticated, async (req: any, res) => {
+  app.post('/api/payments', simpleAuth, async (req: any, res) => {
     try {
       const paymentData = insertPaymentSchema.parse({
         ...req.body,
@@ -371,7 +442,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Contract routes
-  app.get('/api/contracts', isAuthenticated, async (req, res) => {
+  app.get('/api/contracts', simpleAuth, async (req, res) => {
     try {
       const filters = {
         clientId: req.query.clientId ? parseInt(req.query.clientId as string) : undefined,
@@ -388,7 +459,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/contracts', isAuthenticated, async (req: any, res) => {
+  app.post('/api/contracts', simpleAuth, async (req: any, res) => {
     try {
       const contractNumber = `CTR-${Date.now()}`;
       const contractData = insertContractSchema.parse({

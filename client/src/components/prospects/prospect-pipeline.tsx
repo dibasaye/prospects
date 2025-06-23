@@ -215,7 +215,7 @@ export default function ProspectPipeline({ status, searchTerm = "", siteFilter =
                   </SelectTrigger>
                   <SelectContent>
                     {commercials?.map((commercial: any) => (
-                      <SelectItem key={commercial.id} value={commercial.id}>
+                      <SelectItem key={commercial.id} value={commercial.id || ""}>
                         {commercial.firstName} {commercial.lastName}
                       </SelectItem>
                     ))}
