@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, simpleAuth } from "./replitAuth";
+import { setupAuth } from "./replitAuth";
 
 import { 
   insertProspectSchema, 
