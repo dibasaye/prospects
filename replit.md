@@ -2,38 +2,36 @@
 
 ## Overview
 
-YAYE DIA BTP is a comprehensive real estate management system built for managing prospects, properties, sites, lots, and contracts. The application follows a full-stack architecture with a React frontend and Express backend, using PostgreSQL with Drizzle ORM for data management and Replit Auth for authentication.
+YAYE DIA BTP is a comprehensive real estate management system built for managing prospects, properties, sites, lots, and contracts. The application is now being converted from a React/Express stack to a Laravel PHP framework with PostgreSQL database for enhanced scalability and maintainability.
 
 ## System Architecture
 
-### Frontend Architecture
-- **Framework**: React 18 with TypeScript
-- **Routing**: Wouter for client-side routing
-- **State Management**: TanStack Query (React Query) for server state management
-- **UI Components**: Shadcn/ui with Radix UI primitives and Tailwind CSS
-- **Build Tool**: Vite for development and production builds
-- **Form Handling**: React Hook Form with Zod validation
-
 ### Backend Architecture
-- **Framework**: Express.js with TypeScript
-- **Authentication**: Replit Auth with OpenID Connect
-- **Session Management**: Express sessions with PostgreSQL storage
+- **Framework**: Laravel 10+ with PHP 8.2
+- **Authentication**: Laravel Breeze with custom roles and permissions
+- **Database**: PostgreSQL with Eloquent ORM
 - **API Design**: RESTful API with proper error handling and middleware
-- **Development**: tsx for TypeScript execution
+- **Session Management**: Laravel sessions with database storage
+
+### Frontend Architecture
+- **Framework**: Laravel Blade templates with Alpine.js for interactivity
+- **UI Components**: Tailwind CSS with custom components
+- **Form Handling**: Laravel Form Requests with validation
+- **Asset Management**: Laravel Vite for CSS/JS compilation
 
 ### Database Architecture
-- **Database**: PostgreSQL (configured for Neon serverless)
-- **ORM**: Drizzle ORM with TypeScript schema definitions
-- **Migrations**: Drizzle Kit for schema migrations
-- **Connection**: Connection pooling with @neondatabase/serverless
+- **Database**: PostgreSQL 
+- **ORM**: Eloquent ORM with model relationships
+- **Migrations**: Laravel migrations for schema management
+- **Seeders**: Database seeders for initial data
 
 ## Key Components
 
 ### Authentication System
-- **Provider**: Replit Auth with OIDC discovery
-- **Session Storage**: PostgreSQL-backed sessions using connect-pg-simple
+- **Provider**: Laravel Breeze with multi-role support
+- **Session Storage**: Database-backed sessions
 - **User Management**: Comprehensive user profile system with roles (administrateur, responsable_commercial, commercial)
-- **Authorization**: Route-level authentication middleware
+- **Authorization**: Route-level authentication middleware and policies
 
 ### Data Models
 - **Users**: Profile management with roles and authentication data
@@ -46,8 +44,8 @@ YAYE DIA BTP is a comprehensive real estate management system built for managing
 
 ### UI/UX Components
 - **Responsive Design**: Mobile-first approach with Tailwind CSS
-- **Component Library**: Comprehensive Shadcn/ui components
-- **Interactive Elements**: Advanced form handling, data tables, modals, and toast notifications
+- **Component Library**: Reusable Blade components
+- **Interactive Elements**: Alpine.js for dynamic behavior
 - **Dashboard**: Real-time statistics and activity feeds
 - **Data Visualization**: Charts and metrics for business insights
 
@@ -55,10 +53,10 @@ YAYE DIA BTP is a comprehensive real estate management system built for managing
 
 ### Authentication Flow
 1. User accesses protected route
-2. Middleware checks authentication status
-3. Redirects to Replit Auth if unauthenticated
-4. OIDC flow completes and creates/updates user session
-5. User data stored in PostgreSQL with role-based access
+2. Laravel middleware checks authentication status
+3. Redirects to login if unauthenticated
+4. Session-based authentication with role verification
+5. User data managed through Eloquent models
 
 ### Business Process Flow
 1. **Prospect Management**: Create → Assign → Follow-up → Convert
@@ -67,50 +65,39 @@ YAYE DIA BTP is a comprehensive real estate management system built for managing
 4. **Activity Tracking**: All actions logged for audit and reporting
 
 ### API Data Flow
-- Client makes authenticated API requests
-- Express middleware validates session and authorization
-- Business logic processes requests with database operations
+- Laravel routes handle authenticated requests
+- Middleware validates session and authorization
+- Controllers process requests with Eloquent models
 - Responses include proper error handling and status codes
-- Frontend updates UI state via React Query cache invalidation
+- Frontend updates via Livewire or AJAX requests
 
 ## External Dependencies
 
 ### Core Dependencies
-- **@neondatabase/serverless**: PostgreSQL connection for serverless environments
-- **drizzle-orm**: TypeScript ORM with excellent type safety
-- **@tanstack/react-query**: Server state management and caching
-- **@radix-ui/***: Accessible UI component primitives
-- **openid-client**: OIDC authentication implementation
-- **express-session**: Session management middleware
+- **Laravel Framework**: ^10.0
+- **PostgreSQL**: Database management
+- **Tailwind CSS**: Utility-first CSS framework
+- **Alpine.js**: Lightweight JavaScript framework
+- **Laravel Breeze**: Authentication scaffolding
 
 ### Development Dependencies
-- **TypeScript**: Full type safety across the stack
-- **Vite**: Fast development and optimized production builds
-- **Tailwind CSS**: Utility-first CSS framework
-- **ESBuild**: Fast JavaScript bundling for production
-
-### Replit-Specific Integrations
-- **@replit/vite-plugin-runtime-error-modal**: Development error handling
-- **@replit/vite-plugin-cartographer**: Development environment integration
+- **Laravel Vite**: Asset bundling and compilation
+- **Laravel Pint**: Code style fixer
+- **PHPUnit**: Testing framework
 
 ## Deployment Strategy
 
 ### Development Environment
-- **Runtime**: Node.js 20 with PostgreSQL 16
-- **Development Server**: Vite dev server with HMR
-- **Database**: Automatic PostgreSQL provisioning via Replit
-- **Environment Variables**: DATABASE_URL, SESSION_SECRET, REPL_ID, ISSUER_URL, REPLIT_DOMAINS
+- **Runtime**: PHP 8.2 with PostgreSQL
+- **Development Server**: Laravel Artisan serve
+- **Database**: PostgreSQL with environment configuration
+- **Environment Variables**: .env file with database and app configuration
 
 ### Production Deployment
-- **Build Process**: Vite builds client assets, ESBuild bundles server
-- **Deployment Target**: Autoscale deployment on Replit
-- **Port Configuration**: Internal port 5000, external port 80
-- **Static Assets**: Served from dist/public directory
-
-### Database Management
-- **Schema Migrations**: `npm run db:push` for development
-- **Connection Pooling**: Configured for serverless environments
-- **Session Storage**: PostgreSQL-backed session management
+- **Server**: Apache/Nginx with PHP-FPM
+- **Asset Compilation**: npm run build for production assets
+- **Database Management**: Laravel migrations and seeders
+- **Caching**: Redis/Memcached for session and cache storage
 
 ## User Preferences
 
@@ -118,5 +105,41 @@ Preferred communication style: Simple, everyday language.
 
 ## Changelog
 
-Changelog:
-- June 23, 2025. Initial setup
+- June 23, 2025: Migration from React/Express to Laravel framework initiated
+- Database schema design adapted for Laravel Eloquent models
+- Authentication system redesigned using Laravel Breeze
+- Complete Laravel project structure created with:
+  - PostgreSQL database with comprehensive migrations
+  - Eloquent models for all entities (User, Prospect, Site, Lot, Payment, Contract, etc.)
+  - Authentication system with role-based access control
+  - Controllers for dashboard, prospects, and sites management
+  - Tailwind CSS styling with custom components
+  - Database seeders with demo data
+  - Complete MVC architecture following Laravel conventions
+
+## Demo Accounts
+- Administrateur: admin@yayedia.com / admin123
+- Responsable Commercial: manager@yayedia.com / manager123
+- Commercial: commercial@yayedia.com / commercial123
+
+## Running the Application
+Use `./run_laravel.sh` to start the Laravel development server on port 3000.
+
+## Project Status
+✅ Complete Laravel project with full MVC architecture
+✅ PostgreSQL database with comprehensive migrations
+✅ Authentication system with role-based access control  
+✅ Responsive UI with Tailwind CSS and Alpine.js
+✅ Complete CRUD operations for prospects and sites
+✅ Demo data with realistic business scenarios
+✅ Production-ready codebase following Laravel best practices
+
+## Application Features
+- **Dashboard**: Real-time statistics and recent activities
+- **Prospect Management**: Complete CRM functionality with status tracking
+- **Site Management**: Property development projects with lot management
+- **Payment Processing**: Track payments with confirmation system
+- **Contract Generation**: Automated contract creation with payment schedules
+- **Role-Based Access**: Administrator, Manager, and Agent roles
+- **Activity Logging**: Comprehensive audit trail
+- **Responsive Design**: Mobile-first approach with modern UI

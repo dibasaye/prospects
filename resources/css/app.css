@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    :root {
+        --primary-50: 239 246 255;
+        --primary-100: 219 234 254;
+        --primary-500: 59 130 246;
+        --primary-600: 37 99 235;
+        --primary-700: 29 78 216;
+    }
+}
+
+
