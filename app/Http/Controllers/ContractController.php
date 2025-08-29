@@ -380,7 +380,7 @@ class ContractController extends Controller
                 'isHtml5Parser' => true,
                 'isPhpEnabled' => false,
                 'isRemoteEnabled' => false,
-            ])->loadView('contracts.pdf', $data);
+            ])->loadView('contracts.pdf_fixed', $data);
             
             // Compression et options de sortie
             $output = $pdf->output();
