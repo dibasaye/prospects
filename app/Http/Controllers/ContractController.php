@@ -190,7 +190,20 @@ class ContractController extends Controller
                 'content_has_html' => $cleanedContent !== strip_tags($cleanedContent)
             ]);
             
-            // Mise à jour du contenu
+            // Vérifier si le contenu a vraiment changé avant de sauvegarder
+            if ($contract->content === $cleanedContent) {
+                \Log::info('Contenu identique détecté, aucune mise à jour nécessaire');
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Aucune modification détectée. Le contenu est déjà à jour.',
+                    'content' => $contract->content,
+                    'content_length' => $contract->content ? strlen($contract->content) : 0,
+                    'updated_at' => $contract->updated_at->format('Y-m-d H:i:s')
+                ]);
+            }
+            
+            // Mise à jour du contenu seulement s'il a changé
             $contract->content = $cleanedContent;
             $contract->updated_at = now();
             $saved = $contract->save();
@@ -302,6 +315,8 @@ class ContractController extends Controller
             ]);
     
             // Gestion du contenu personnalisé
+            $contentToSave = null; // Variable pour éviter les sauvegardes multiples
+            
             if (request()->has('content') && !empty(trim(request('content')))) {
                 // Nettoyer le contenu HTML
                 $content = trim(request('content'));
@@ -312,14 +327,15 @@ class ContractController extends Controller
                     'content_preview' => substr(strip_tags($content), 0, 100) . '...'
                 ]);
                 
-                // Sauvegarder le contenu modifié dans la base de données
-                $contract->update([
-                    'content' => $content,
-                    'updated_at' => now()
-                ]);
+                // Vérifier si le contenu a vraiment changé avant de sauvegarder
+                if ($contract->content !== $content) {
+                    $contentToSave = $content;
+                    \Log::info('Nouveau contenu détecté, sera sauvegardé');
+                } else {
+                    \Log::info('Contenu identique à celui existant, pas de sauvegarde nécessaire');
+                }
                 
                 $data['custom_content'] = $content;
-                \Log::info('Contenu personnalisé sauvegardé dans la base de données');
             } 
             // Utiliser le contenu sauvegardé s'il existe
             else if (!empty($contract->content)) {
@@ -337,15 +353,23 @@ class ContractController extends Controller
                     'client' => $contract->client
                 ])->render();
                 
-                // Sauvegarder le contenu par défaut pour une utilisation future
-                $contract->update([
-                    'content' => $defaultContent,
-                    'updated_at' => now()
-                ]);
+                // Sauvegarder le contenu par défaut seulement s'il n'existe pas déjà
+                if (empty($contract->content)) {
+                    $contentToSave = $defaultContent;
+                    \Log::info('Contenu par défaut sera sauvegardé car aucun contenu existant');
+                }
                 
                 $data['custom_content'] = $defaultContent;
-                \Log::info('Contenu par défaut généré et sauvegardé', [
-                    'content_length' => strlen($defaultContent)
+            }
+            
+            // Effectuer une seule sauvegarde si nécessaire
+            if ($contentToSave !== null) {
+                $contract->update([
+                    'content' => $contentToSave,
+                    'updated_at' => now()
+                ]);
+                \Log::info('Contenu sauvegardé dans la base de données', [
+                    'content_length' => strlen($contentToSave)
                 ]);
             }
             
@@ -415,18 +439,22 @@ class ContractController extends Controller
     public function exportWord(Contract $contract)
     {
         // Récupérer le contenu modifié s'il existe
+        $contentToSave = null; // Variable pour éviter les sauvegardes multiples
+        
         if (request()->has('content')) {
             $content = request()->input('content');
             $clientName = request()->input('client_name', $contract->client->full_name);
             $contractDate = request()->input('contract_date', now()->format('d/m/Y'));
             
-            // Sauvegarder le contenu modifié dans la base de données
-            $contract->update([
-                'content' => $content,
-                'updated_at' => now()
-            ]);
+            // Vérifier si le contenu a vraiment changé avant de sauvegarder
+            if ($contract->content !== $content) {
+                $contentToSave = $content;
+                \Log::info('Nouveau contenu détecté pour l\'export Word, sera sauvegardé');
+            } else {
+                \Log::info('Contenu identique pour l\'export Word, pas de sauvegarde nécessaire');
+            }
             
-            // Mettre à jour les données du contrat avec le contenu modifié
+            // Mettre à jour les données du contrat avec le contenu modifié (sans sauvegarder encore)
             $contract->custom_content = $content;
             $contract->client_name = $clientName;
             $contract->contract_date = $contractDate;
@@ -451,6 +479,17 @@ class ContractController extends Controller
             'pageSizeW' => 11906,  // Largeur A4 en twips (21cm)
             'pageSizeH' => 16838   // Hauteur A4 en twips (29.7cm)
         ]);
+        
+        // Effectuer une seule sauvegarde si nécessaire avant la génération
+        if ($contentToSave !== null) {
+            $contract->update([
+                'content' => $contentToSave,
+                'updated_at' => now()
+            ]);
+            \Log::info('Contenu sauvegardé pour l\'export Word', [
+                'content_length' => strlen($contentToSave)
+            ]);
+        }
         
         // Vérifier si un contenu personnalisé est fourni
         if (request()->has('content')) {
