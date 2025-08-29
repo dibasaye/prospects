@@ -18,6 +18,7 @@ class PaymentSchedule extends Model
         'is_paid',
         'paid_date',
         'payment_id',
+        'payment_method',
         'notes',
     ];
 

@@ -27,6 +27,9 @@ class Lot extends Model
         'coordinates',
         'has_utilities',
         'features',
+        'notes',
+         'reservation_id',
+
     ];
 
     protected $casts = [
@@ -54,6 +57,12 @@ class Lot extends Model
     {
         return $this->hasOne(Contract::class);
     }
+
+   public function reservation(): HasOne
+{
+    return $this->hasOne(Reservation::class)->latestOfMany(); // 👈 Prend la dernière réservation si plusieurs
+}
+
 
     public function payments(): HasMany
     {
@@ -94,4 +103,28 @@ class Lot extends Model
     {
         return $this->status === 'vendu';
     }
+
+    public function getStatusColorAttribute()
+{
+    return match($this->status) {
+        'disponible' => '#28a745',           // vert
+        'reserve_temporaire' => '#ffc107',   // jaune/orange
+        'reserve' => '#fd7e14',              // orange foncé
+        'vendu' => '#dc3545',                // rouge
+        default => '#6c757d',                // gris (fallback)
+    };
+}
+
+public function getStatusLabelAttribute()
+{
+    return match($this->status) {
+        'disponible' => 'Disponible',
+        'reserve_temporaire' => 'Réservation temporaire',
+        'reserve' => 'Réservé',
+        'vendu' => 'Vendu',
+        default => 'Inconnu',
+    };
+}
+
+
 }

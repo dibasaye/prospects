@@ -27,6 +27,15 @@ class Site extends Model
         'latitude',
         'longitude',
         'is_active',
+        'enable_12',
+        'enable_24',
+        'enable_cash',
+        'price_12_months',
+        'price_24_months',
+        'price_cash',
+        'enable_36',
+        'price_36_months', 
+
     ];
 
     protected $casts = [

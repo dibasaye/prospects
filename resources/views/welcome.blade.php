@@ -1,210 +1,323 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>YAYE DIA BTP - Gestion Immobilière</title>
 
-        <title>YAYE DIA BTP - Gestion Immobilière</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.bunny.net" />
+    <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
-        <!-- Fonts -->
-        <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
+    <style>
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            font-family: 'Figtree', sans-serif;
+            background-color: #f3f4f6;
+            color: #5C4033;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        a {
+            text-decoration: none;
+            color: #5C4033;
+            font-weight: 600;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            display: inline-block;
+        }
+        a:hover {
+            text-decoration: none;
+            background-color: #5C4033;
+            color: white !important;
+        }
+        h1, h2, h3, p {
+            color: #5C4033;
+        }
 
-        <!-- Styles -->
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
-    </head>
-    <body class="font-sans antialiased">
-        <div class="min-h-screen bg-gray-100 dark:bg-gray-900">
-            <!-- Navigation -->
-            <nav class="bg-white shadow-lg">
-                <div class="max-w-7xl mx-auto px-4">
-                    <div class="flex justify-between h-16">
-                        <div class="flex items-center">
-                            <div class="text-xl font-bold text-blue-600">YAYE DIA BTP</div>
-                        </div>
-                        <div class="flex items-center space-x-4">
-                            @if (Route::has('login'))
-                                @auth
-                                    <a href="{{ url('/dashboard') }}" class="text-blue-600 hover:text-blue-800 font-medium">Tableau de bord</a>
-                                @else
-                                    <a href="{{ route('login') }}" class="text-gray-600 hover:text-gray-800">Connexion</a>
-                                    @if (Route::has('register'))
-                                        <a href="{{ route('register') }}" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">Inscription</a>
-                                    @endif
-                                @endauth
-                            @endif
-                        </div>
-                    </div>
-                </div>
-            </nav>
+        nav {
+            background-color: white;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        nav .nav-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 70px;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+        nav .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+        nav .brand img {
+            height: 70px; /* agrandi */
+            width: auto;
+        }
+        nav .nav-links {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+        .btn-primary {
+            background-color: #5C4033;
+            color: white !important;
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            font-weight: 700;
+            transition: background-color 0.3s ease;
+        }
+        .btn-primary:hover {
+            background-color: #3e2d22;
+            color: white !important;
+        }
+        /* Pour les liens simples 'Connexion' */
+        .nav-links > a:not(.btn-primary) {
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-weight: 600;
+            border: 2px solid transparent;
+            transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+        }
+        .nav-links > a:not(.btn-primary):hover {
+            background-color: #5C4033;
+            color: white !important;
+            border-color: #5C4033;
+            text-decoration: none;
+        }
 
-            <!-- Hero Section -->
-            <div class="bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-800 dark:to-gray-900">
-                <div class="max-w-7xl mx-auto px-4 py-16 sm:py-24">
-                    <div class="text-center">
-                        <h1 class="text-4xl md:text-6xl font-bold text-gray-900 dark:text-white mb-6">
-                            YAYE DIA BTP
-                        </h1>
-                        <p class="text-xl md:text-2xl text-gray-600 dark:text-gray-300 mb-8">
-                            Système de Gestion Immobilière Moderne
-                        </p>
-                        <p class="text-lg text-gray-500 dark:text-gray-400 mb-12 max-w-3xl mx-auto">
-                            Gérez efficacement vos prospects, sites, lots, contrats et paiements avec notre plateforme intégrée.
-                            Conçue spécialement pour les professionnels de l'immobilier au Sénégal.
-                        </p>
-                        
-                        <div class="flex justify-center space-x-4">
-                            @auth
-                                <a href="{{ route('dashboard') }}" class="bg-blue-600 text-white px-8 py-3 rounded-md text-lg font-medium hover:bg-blue-700 transition duration-150">
-                                    Accéder au Tableau de Bord
-                                </a>
-                            @else
-                                <a href="{{ route('login') }}" class="bg-blue-600 text-white px-8 py-3 rounded-md text-lg font-medium hover:bg-blue-700 transition duration-150">
-                                    Se Connecter
-                                </a>
-                            @endauth
-                        </div>
-                    </div>
-                </div>
+        .video-hero {
+            position: relative;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        .video-bg {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            min-width: 100%;
+            min-height: 100%;
+            transform: translate(-50%, -50%);
+            z-index: -2;
+            object-fit: cover;
+        }
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(92, 64, 51, 0.5);
+            z-index: -1;
+        }
+        .video-hero .content {
+            z-index: 1;
+            padding: 2rem;
+            max-width: 700px;
+        }
+        .video-hero .content h1,
+        .video-hero .content .lead,
+        .video-hero .content .description {
+            color: #D2B48C;
+        }
+        .video-hero h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        .video-hero .lead {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .video-hero .description {
+            font-size: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .features {
+            background-color: white;
+            padding: 4rem 1rem;
+        }
+        .features .section-title {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        .features-grid {
+            display: grid;
+            gap: 2rem;
+            grid-template-columns: 1fr;
+        }
+        @media (min-width: 768px) {
+            .features-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (min-width: 1024px) {
+            .features-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        .feature-card {
+            background-color: #f9fafb;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 0 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .demo-accounts {
+            background-color: #f9fafb;
+            padding: 4rem 1rem;
+            text-align: center;
+        }
+        .demo-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+        @media (min-width: 768px) {
+            .demo-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        .demo-card {
+            background-color: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
+            text-align: left;
+        }
+
+        footer {
+            background-color: #1f2937;
+            color: white;
+            padding: 2rem 1rem;
+            text-align: center;
+            margin-top: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div class="nav-inner">
+            <div class="brand">
+                <img src="{{ asset('images/image.png') }}" alt="Logo">
+                YAYE DIA BTP
             </div>
-
-            <!-- Features Section -->
-            <div class="py-16 bg-white dark:bg-gray-800">
-                <div class="max-w-7xl mx-auto px-4">
-                    <div class="text-center mb-12">
-                        <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-                            Fonctionnalités Principales
-                        </h2>
-                        <p class="text-lg text-gray-600 dark:text-gray-300">
-                            Un système complet pour gérer tous les aspects de votre activité immobilière
-                        </p>
-                    </div>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        <!-- Gestion des Prospects -->
-                        <div class="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg">
-                            <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mb-4">
-                                <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
-                                </svg>
-                            </div>
-                            <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">Gestion des Prospects</h3>
-                            <p class="text-gray-600 dark:text-gray-300">
-                                Suivez vos prospects de la première prise de contact jusqu'à la conversion, avec un système de statuts complet.
-                            </p>
-                        </div>
-
-                        <!-- Gestion des Sites -->
-                        <div class="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg">
-                            <div class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center mb-4">
-                                <svg class="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
-                                </svg>
-                            </div>
-                            <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">Gestion des Sites</h3>
-                            <p class="text-gray-600 dark:text-gray-300">
-                                Gérez vos projets immobiliers avec les lots, prix, et toutes les informations importantes.
-                            </p>
-                        </div>
-
-                        <!-- Système de Paiement -->
-                        <div class="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg">
-                            <div class="w-12 h-12 bg-yellow-100 dark:bg-yellow-900 rounded-lg flex items-center justify-center mb-4">
-                                <svg class="w-6 h-6 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
-                                </svg>
-                            </div>
-                            <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">Suivi des Paiements</h3>
-                            <p class="text-gray-600 dark:text-gray-300">
-                                Suivez les paiements d'adhésion, de réservation et les mensualités avec un système de validation.
-                            </p>
-                        </div>
-
-                        <!-- Gestion des Contrats -->
-                        <div class="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg">
-                            <div class="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center mb-4">
-                                <svg class="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                </svg>
-                            </div>
-                            <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">Génération de Contrats</h3>
-                            <p class="text-gray-600 dark:text-gray-300">
-                                Créez et gérez les contrats de vente avec des échéanciers de paiement personnalisés.
-                            </p>
-                        </div>
-
-                        <!-- Système de Rôles -->
-                        <div class="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg">
-                            <div class="w-12 h-12 bg-red-100 dark:bg-red-900 rounded-lg flex items-center justify-center mb-4">
-                                <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
-                                </svg>
-                            </div>
-                            <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">Gestion des Accès</h3>
-                            <p class="text-gray-600 dark:text-gray-300">
-                                Contrôlez les accès avec des rôles d'administrateur, responsable commercial et commercial.
-                            </p>
-                        </div>
-
-                        <!-- Rapports et Analytics -->
-                        <div class="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg">
-                            <div class="w-12 h-12 bg-indigo-100 dark:bg-indigo-900 rounded-lg flex items-center justify-center mb-4">
-                                <svg class="w-6 h-6 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                                </svg>
-                            </div>
-                            <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">Rapports & Statistiques</h3>
-                            <p class="text-gray-600 dark:text-gray-300">
-                                Tableaux de bord avec statistiques en temps réel et historique des activités détaillé.
-                            </p>
-                        </div>
-                    </div>
-                </div>
+            <div class="nav-links">
+                @if (Route::has('login'))
+                    @auth
+                        <a href="{{ url('/dashboard') }}" class="btn-primary">Tableau de bord</a>
+                    @else
+                        <a href="{{ route('login') }}">Connexion</a>
+                        @if (Route::has('register'))
+                            <a href="{{ route('register') }}" class="btn-primary">Inscription</a>
+                        @endif
+                    @endauth
+                @endif
             </div>
-
-            <!-- Demo Accounts Section -->
-            @guest
-            <div class="py-16 bg-gray-50 dark:bg-gray-700">
-                <div class="max-w-4xl mx-auto px-4 text-center">
-                    <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-8">
-                        Comptes de Démonstration
-                    </h2>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Administrateur</h3>
-                            <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">Accès complet au système</p>
-                            <div class="text-sm text-gray-500 dark:text-gray-400">
-                                <p><strong>Email:</strong> admin@yayedia.com</p>
-                                <p><strong>Mot de passe:</strong> admin123</p>
-                            </div>
-                        </div>
-                        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Responsable Commercial</h3>
-                            <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">Gestion d'équipe</p>
-                            <div class="text-sm text-gray-500 dark:text-gray-400">
-                                <p><strong>Email:</strong> manager@yayedia.com</p>
-                                <p><strong>Mot de passe:</strong> manager123</p>
-                            </div>
-                        </div>
-                        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Commercial</h3>
-                            <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">Gestion des prospects</p>
-                            <div class="text-sm text-gray-500 dark:text-gray-400">
-                                <p><strong>Email:</strong> commercial@yayedia.com</p>
-                                <p><strong>Mot de passe:</strong> commercial123</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            @endguest
-
-            <!-- Footer -->
-            <footer class="bg-gray-800 dark:bg-gray-900 text-white py-8">
-                <div class="max-w-7xl mx-auto px-4 text-center">
-                    <p>&copy; {{ date('Y') }} YAYE DIA BTP. Système de gestion immobilière moderne.</p>
-                </div>
-            </footer>
         </div>
-    </body>
+    </nav>
+
+    <section class="video-hero">
+        <video autoplay muted loop playsinline class="video-bg">
+            <source src="{{ asset('videos/background.mp4') }}" type="video/mp4">
+            Votre navigateur ne supporte pas la vidéo HTML5.
+        </video>
+        <div class="overlay"></div>
+        <div class="content">
+            <h1>YAYE DIA BTP</h1>
+            <p class="lead">Système de Gestion Immobilière Moderne</p>
+            <p class="description">
+                Gérez efficacement vos prospects, sites, lots, contrats et paiements avec notre plateforme intégrée.
+                Conçue pour les professionnels de l'immobilier au Sénégal.
+            </p>
+            <div class="btn-group">
+                @auth
+                    <a href="{{ route('dashboard') }}" class="btn-primary">Accéder au Tableau de Bord</a>
+                @else
+                    <a href="{{ route('login') }}" class="btn-primary">Se Connecter</a>
+                @endauth
+            </div>
+        </div>
+    </section>
+
+    <section class="features">
+        <div class="section-title">
+            <h2>Fonctionnalités Principales</h2>
+            <p>Un système complet pour gérer tous les aspects de votre activité immobilière</p>
+        </div>
+        <div class="features-grid">
+            <div class="feature-card">
+                <h3>Gestion des Prospects</h3>
+                <p>Suivi des prospects du premier contact jusqu’à la signature du contrat.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Gestion des Sites</h3>
+                <p>Organisation des projets avec détails des lots, disponibilités, prix, etc.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Suivi des Paiements</h3>
+                <p>Validation des paiements : adhésion, réservation et mensualités.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Génération de Contrats</h3>
+                <p>Création automatisée des contrats avec échéancier personnalisé.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Contrôle d’Accès</h3>
+                <p>Rôles : administrateur, responsable commercial, commercial.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Statistiques</h3>
+                <p>Dashboard avec données en temps réel et historique des activités.</p>
+            </div>
+        </div>
+    </section>
+
+    @guest
+    <section class="demo-accounts">
+        <div class="container">
+            <h2>Comptes de Démonstration</h2>
+            <div class="demo-grid">
+                <div class="demo-card">
+                    <h3>Administrateur</h3>
+                    <p><strong>Email:</strong> admin@yayedia.com</p>
+                    <p><strong>Mot de passe:</strong> admin123</p>
+                </div>
+                <div class="demo-card">
+                    <h3>Responsable Commercial</h3>
+                    <p><strong>Email:</strong> manager@yayedia.com</p>
+                    <p><strong>Mot de passe:</strong> manager123</p>
+                </div>
+                <div class="demo-card">
+                    <h3>Commercial</h3>
+                    <p><strong>Email:</strong> commercial@yayedia.com</p>
+                    <p><strong>Mot de passe:</strong> commercial123</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    @endguest
+
+    <footer>
+        <div class="container">
+            <p>&copy; {{ date('Y') }} YAYE DIA BTP. Système de gestion immobilière moderne.</p>
+        </div>
+    </footer>
+
+</body>
 </html>

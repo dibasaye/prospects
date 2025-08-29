@@ -10,8 +10,8 @@ return new class extends Migration
     {
         Schema::create('prospects', function (Blueprint $table) {
             $table->id();
-            $table->string('first_name');
-            $table->string('last_name');
+            $table->string('first_name')->nullable(); // Modified to be nullable
+            $table->string('last_name')->nullable(); // Modified to be nullable
             $table->string('phone');
             $table->string('phone_secondary')->nullable();
             $table->string('email')->nullable();

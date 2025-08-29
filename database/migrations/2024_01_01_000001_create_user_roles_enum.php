@@ -8,32 +8,61 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Create ENUM type for user roles
-        DB::statement("CREATE TYPE user_role AS ENUM ('administrateur', 'responsable_commercial', 'commercial')");
-        
-        // Create ENUM type for prospect status
-        DB::statement("CREATE TYPE prospect_status AS ENUM ('nouveau', 'en_relance', 'interesse', 'converti', 'abandonne')");
-        
-        // Create ENUM type for lot status
-        DB::statement("CREATE TYPE lot_status AS ENUM ('disponible', 'reserve_temporaire', 'reserve', 'vendu')");
-        
-        // Create ENUM type for lot position
-        DB::statement("CREATE TYPE lot_position AS ENUM ('angle', 'facade', 'interieur')");
-        
-        // Create ENUM type for payment type
-        DB::statement("CREATE TYPE payment_type AS ENUM ('adhesion', 'reservation', 'mensualite')");
-        
-        // Create ENUM type for contract status
-        DB::statement("CREATE TYPE contract_status AS ENUM ('brouillon', 'genere', 'signe', 'archive')");
+        Schema::create('enum_demo', function (Blueprint $table) {
+            $table->id();
+
+            // ENUM des rôles utilisateurs
+            $table->enum('user_role', [
+                'administrateur',
+                'responsable_commercial',
+                'commercial'
+            ])->nullable();
+
+            // ENUM pour le statut du prospect
+            $table->enum('prospect_status', [
+                'nouveau',
+                'en_relance',
+                'interesse',
+                'converti',
+                'abandonne'
+            ])->nullable();
+
+            // ENUM pour le statut du lot
+            $table->enum('lot_status', [
+                'disponible',
+                'reserve_temporaire',
+                'reserve',
+                'vendu'
+            ])->nullable();
+
+            // ENUM pour la position du lot
+            $table->enum('lot_position', [
+                'angle',
+                'facade',
+                'interieur'
+            ])->nullable();
+
+            // ENUM pour le type de paiement
+            $table->enum('payment_type', [
+                'adhesion',
+                'reservation',
+                'mensualite'
+            ])->nullable();
+
+            // ENUM pour le statut du contrat
+            $table->enum('contract_status', [
+                'brouillon',
+                'genere',
+                'signe',
+                'archive'
+            ])->nullable();
+
+            $table->timestamps();
+        });
     }
 
     public function down(): void
     {
-        DB::statement('DROP TYPE IF EXISTS contract_status');
-        DB::statement('DROP TYPE IF EXISTS payment_type');
-        DB::statement('DROP TYPE IF EXISTS lot_position');
-        DB::statement('DROP TYPE IF EXISTS lot_status');
-        DB::statement('DROP TYPE IF EXISTS prospect_status');
-        DB::statement('DROP TYPE IF EXISTS user_role');
+        Schema::dropIfExists('enum_demo');
     }
 };

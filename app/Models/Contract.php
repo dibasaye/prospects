@@ -32,6 +32,7 @@ class Contract extends Model
         'signed_by_client',
         'signed_by_agent',
         'notes',
+        'content',
     ];
 
     protected $casts = [
@@ -48,6 +49,14 @@ class Contract extends Model
     public function client(): BelongsTo
     {
         return $this->belongsTo(Prospect::class, 'client_id');
+    }
+    
+    /**
+     * Get the payments for the contract.
+     */
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
     }
 
     public function site(): BelongsTo
