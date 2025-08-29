@@ -129,17 +129,8 @@ Route::post('/prospects/store-bulk', [ProspectController::class, 'storeBulk'])->
     
     Route::get('/prospects/conversion-stats', [ProspectController::class, 'conversionStats'])
     ->name('prospects.conversion-stats');
-    // Contract management routes
-
+    // Contract generation from prospect
     Route::get('prospects/{prospect}/generate-contract', [ContractController::class, 'generateFromReservation'])->name('contracts.generate');
-    Route::get('contracts/{contract}', [ContractController::class, 'show'])->name('contracts.show');
-    Route::get('contracts/{contract}/export-pdf', [ContractController::class, 'exportPdf'])->name('contracts.pdf');
-    Route::post('contracts/{contract}/upload-signed', [ContractController::class, 'uploadSignedCopy'])->name('contracts.uploadSigned');
-    Route::post('contracts/{contract}/sign', [ContractController::class, 'signContract'])->name('contracts.sign');
-    Route::get('contracts', [ContractController::class, 'index'])->name('contracts.index');
-    Route::get('/contracts/export', [ContractController::class, 'export'])->name('contracts.export');
-    Route::get('/contracts/create/{prospect}', [ContractController::class, 'create'])->name('contracts.create');
-    Route::post('/contracts', [ContractController::class, 'store'])->name('contracts.store');
 
     // Payment Schedule management routes
     Route::get('/payment-schedules', [PaymentScheduleController::class, 'index'])->name('payment-schedules.index');
@@ -216,15 +207,31 @@ Route::post('/sites/{site}/lots', [LotController::class, 'store'])->name('lots.s
     Route::get('/users/create', [UserController::class, 'create'])->name('admin.users.create');
     Route::post('/users', [UserController::class, 'store'])->name('admin.users.store');
 
-    // Routes pour les contrats
-    Route::resource('contracts', ContractController::class)->except(['edit', 'update']);
-    Route::get('contracts/{contract}/preview', [ContractController::class, 'preview'])->name('contracts.preview');
-    Route::get('contracts/{contract}/edit-content', [ContractController::class, 'editContent'])->name('contracts.edit-content');
-    Route::put('contracts/{contract}/update-content', [ContractController::class, 'updateContent'])->name('contracts.update-content');
-    Route::get('contracts/{contract}/pdf', [ContractController::class, 'exportPdf'])->name('contracts.export.pdf');
-    Route::get('contracts/{contract}/word', [ContractController::class, 'exportWord'])->name('contracts.export.word');
-    Route::post('contracts/{contract}/upload-signed', [ContractController::class, 'uploadSignedCopy'])->name('contracts.upload-signed');
-    Route::post('contracts/{contract}/sign', [ContractController::class, 'signContract'])->name('contracts.sign');
+    // Contract Management Routes - OPTIMIZED
+    Route::prefix('contracts')->name('contracts.')->group(function () {
+        // Basic CRUD operations
+        Route::get('/', [ContractController::class, 'index'])->name('index');
+        Route::get('/create/{prospect}', [ContractController::class, 'create'])->name('create');
+        Route::post('/', [ContractController::class, 'store'])->name('store');
+        Route::get('/{contract}', [ContractController::class, 'show'])->name('show');
+        
+        // Content management
+        Route::get('/{contract}/preview', [ContractController::class, 'preview'])->name('preview');
+        Route::get('/{contract}/edit-content', [ContractController::class, 'editContent'])->name('edit-content');
+        Route::put('/{contract}/update-content', [ContractController::class, 'updateContent'])->name('update-content');
+        
+        // Export operations
+        Route::get('/{contract}/export/pdf', [ContractController::class, 'exportPdf'])->name('export.pdf');
+        Route::get('/{contract}/export/word', [ContractController::class, 'exportWord'])->name('export.word');
+        Route::get('/export/csv', [ContractController::class, 'export'])->name('export');
+        
+        // Signature operations
+        Route::post('/{contract}/upload-signed', [ContractController::class, 'uploadSignedCopy'])->name('upload-signed');
+        Route::post('/{contract}/sign', [ContractController::class, 'signContract'])->name('sign');
+        
+        // Payment operations
+        Route::post('/payment-schedules/{schedule}/pay', [ContractController::class, 'pay'])->name('schedules.pay');
+    });
 });
 
 

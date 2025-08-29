@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Builder;
 
 class Contract extends Model
 {
@@ -44,7 +45,15 @@ class Contract extends Model
         'end_date' => 'date',
         'signature_date' => 'date',
         'terms_and_conditions' => 'array',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
+
+    // Constantes pour les statuts
+    const STATUS_DRAFT = 'brouillon';
+    const STATUS_SIGNED = 'signe';
+    const STATUS_CANCELLED = 'annule';
+    const STATUS_COMPLETED = 'complete';
 
     public function client(): BelongsTo
     {
@@ -106,11 +115,98 @@ class Contract extends Model
 
     public function isSigned(): bool
     {
-        return $this->status === 'signe';
+        return $this->status === self::STATUS_SIGNED;
     }
 
     public function isDraft(): bool
     {
-        return $this->status === 'brouillon';
+        return $this->status === self::STATUS_DRAFT;
+    }
+
+    public function isCancelled(): bool
+    {
+        return $this->status === self::STATUS_CANCELLED;
+    }
+
+    public function isCompleted(): bool
+    {
+        return $this->status === self::STATUS_COMPLETED;
+    }
+
+    /**
+     * Calculer le pourcentage de paiement
+     */
+    public function getPaymentPercentageAttribute(): float
+    {
+        if ($this->total_amount == 0) {
+            return 0;
+        }
+        return round(($this->paid_amount / $this->total_amount) * 100, 2);
+    }
+
+    /**
+     * Vérifier si le contrat est entièrement payé
+     */
+    public function isFullyPaid(): bool
+    {
+        return $this->paid_amount >= $this->total_amount;
+    }
+
+    /**
+     * Obtenir le montant restant à payer
+     */
+    public function getRemainingAmountAttribute(): float
+    {
+        return max(0, $this->total_amount - $this->paid_amount);
+    }
+
+    /**
+     * Générer un numéro de contrat unique
+     */
+    public static function generateContractNumber(): string
+    {
+        do {
+            $number = 'CTR-' . now()->format('Y') . '-' . str_pad(mt_rand(1, 9999), 4, '0', STR_PAD_LEFT);
+        } while (static::where('contract_number', $number)->exists());
+        
+        return $number;
+    }
+
+    /**
+     * Vérifier si le contenu peut être modifié
+     */
+    public function canEditContent(): bool
+    {
+        return in_array($this->status, [self::STATUS_DRAFT]);
+    }
+
+    /**
+     * Marquer le contrat comme signé
+     */
+    public function markAsSigned(?string $notes = null): bool
+    {
+        return $this->update([
+            'status' => self::STATUS_SIGNED,
+            'signature_date' => now(),
+            'signed_by_agent' => auth()->id(),
+            'notes' => $notes
+        ]);
+    }
+
+    /**
+     * Scope pour les contrats actifs
+     */
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->whereNotIn('status', [self::STATUS_CANCELLED]);
+    }
+
+    /**
+     * Scope pour les contrats de ce mois
+     */
+    public function scopeCurrentMonth(Builder $query): Builder
+    {
+        return $query->whereYear('created_at', now()->year)
+                    ->whereMonth('created_at', now()->month);
     }
 }

@@ -41,7 +41,7 @@
   position: absolute;
   top: 50%; left: 50%;
   width: 180mm; height: 180mm;
-  background: url('images/image.png') no-repeat center center;
+  background: url('{{ $watermark_image }}') no-repeat center center;
   background-size: contain;
   opacity: 0.05;
   transform: translate(-50%, -50%);
@@ -129,7 +129,7 @@
 
 <!-- ========================= PAGE 1 ========================= -->
 <section class="page">
-  <img class="header-image" src="images/yayedia.png" alt="En-tête YAYE DIA BTP">
+  <img class="header-image" src="{{ $header_image }}" alt="En-tête YAYE DIA BTP">
 
   <h1 class="title">Contrat de réservation</h1>
 
@@ -192,7 +192,7 @@
 
 
   <div class="bottom-refs tiny">
-    <img src="images/footer-image.png" alt="Bannière footer">
+    <img src="{{ $footer_image }}" alt="Bannière footer">
     RCCM: SN DKR 2024 B 31686 – NINEA : 011440188<br>
     Cptes bancaires :  SN039 01001 067615921200 05    SN012 01201 036206462201 47<br>
     CITE KEUR GORGUI LOT 33 ET 34   +221 78 192 00 00 / +221 33 827 00 65<br>
@@ -203,7 +203,7 @@
 
 <!-- ========================= PAGE 2 ========================= -->
 <section class="page">
-  <img class="header-image" src="images/yayedia.png" alt="En-tête YAYE DIA BTP">
+  <img class="header-image" src="{{ $header_image }}" alt="En-tête YAYE DIA BTP">
 
   <p>
     YAYE DIA BTP propose à la commercialisation les terrains issus du lotissement de cette assiette dans
@@ -333,7 +333,7 @@ million cent mille (1 100 000) Francs CFA et d'une mensualité de 245 900 Francs
 
 
   <div class="bottom-refs tiny">
-    <img src="images/footer-image.png" alt="Bannière footer">
+    <img src="{{ $footer_image }}" alt="Bannière footer">
     RCCM: SN DKR 2024 B 31686 – NINEA : 011440188<br>
     Cptes bancaires :  SN039 01001 067615921200 05    SN012 01201 036206462201 47<br>
     CITE KEUR GORGUI LOT 33 ET 34   +221 78 192 00 00 / +221 33 827 00 65<br>
@@ -344,7 +344,7 @@ million cent mille (1 100 000) Francs CFA et d'une mensualité de 245 900 Francs
 
 <!-- ========================= PAGE 3 ========================= -->
 <section class="page">
-  <img class="header-image" src="images/yayedia.png" alt="En-tête YAYE DIA BTP">
+  <img class="header-image" src="{{ $header_image }}" alt="En-tête YAYE DIA BTP">
   <p>
   Unilatérale, YAYE DIA BTP notifie la rupture du contrat par exploit d'huissier mentionnant son intention
   de se prévaloir des stipulations du présent paragraphe. La résolution du présent contrat entraîne des pénalités
@@ -394,7 +394,7 @@ million cent mille (1 100 000) Francs CFA et d'une mensualité de 245 900 Francs
 
   
   <div class="bottom-refs tiny">
-    <img src="images/footer-image.png" alt="Bannière footer">
+    <img src="{{ $footer_image }}" alt="Bannière footer">
     RCCM: SN DKR 2024 B 31686 – NINEA : 011440188<br>
     Cptes bancaires :  SN039 01001 067615921200 05    SN012 01201 036206462201 47<br>
     CITE KEUR GORGUI LOT 33 ET 34   +221 78 192 00 00 / +221 33 827 00 65<br>
@@ -450,7 +450,7 @@ million cent mille (1 100 000) Francs CFA et d'une mensualité de 245 900 Francs
 
 <!-- ========================= PAGE 4 : Signatures ========================= -->
 <section class="page">
-  <img class="header-image" src="images/yayedia.png" alt="En-tête YAYE DIA BTP">
+  <img class="header-image" src="{{ $header_image }}" alt="En-tête YAYE DIA BTP">
  
 <p class="indent">
   13.3 Élection de domicile<br>
@@ -492,7 +492,7 @@ million cent mille (1 100 000) Francs CFA et d'une mensualité de 245 900 Francs
   </div>
 
   <div class="bottom-refs tiny">
-    <img src="images/footer-image.png" alt="Bannière footer">
+    <img src="{{ $footer_image }}" alt="Bannière footer">
     RCCM: SN DKR 2024 B 31686 – NINEA : 011440188<br>
     Cptes bancaires :  SN039 01001 067615921200 05    SN012 01201 036206462201 47<br>
     CITE KEUR GORGUI LOT 33 ET 34   +221 78 192 00 00 / +221 33 827 00 65<br>

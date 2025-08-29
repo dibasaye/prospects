@@ -12,11 +12,19 @@ use App\Models\Contract;
 use App\Models\Reservation;
 use App\Models\Lot;
 use App\Models\PaymentSchedule;
+use App\Services\ContractService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
 
 class ContractController extends Controller
 {
+    protected ContractService $contractService;
+
+    public function __construct(ContractService $contractService)
+    {
+        $this->contractService = $contractService;
+    }
     public function index(Request $request)
     {
         $contracts = Contract::with(['client', 'lot'])
@@ -37,7 +45,7 @@ class ContractController extends Controller
         $lot = optional($prospect->reservation)->lot;
 
         if (!$lot) {
-            return redirect()->back()->with('error', 'Ce prospect n’a pas de lot réservé.');
+            return redirect()->back()->with('error', 'Ce prospect n'a pas de lot réservé.');
         }
 
         return view('contracts.create', compact('prospect', 'lot'));
@@ -52,53 +60,19 @@ class ContractController extends Controller
 
     public function generateFromReservation(Prospect $prospect)
     {
-        if (Contract::where('client_id', $prospect->id)->exists()) {
-            return back()->with('error', 'Un contrat a déjà été généré pour ce client.');
-        }
-
-        $reservation = $prospect->reservation;
-        if (!$reservation || !$reservation->lot) {
-            return back()->with('error', 'Aucune réservation active avec un lot associé.');
-        }
-
-        $lot = $reservation->lot;
-        $site = $lot->site;
-
-        $total = $lot->price ?? 5000000;
-        $duration = 12;
-        $monthly = $total / $duration;
-
-        $contract = Contract::create([
-            'contract_number' => 'CTR-' . strtoupper(uniqid()),
-            'client_id' => $prospect->id,
-            'site_id' => $site->id,
-            'lot_id' => $lot->id,
-            'total_amount' => $total,
-            'paid_amount' => $prospect->payments()->sum('amount'),
-            'remaining_amount' => $total - $prospect->payments()->sum('amount'),
-            'payment_duration_months' => $duration,
-            'monthly_payment' => $monthly,
-            'start_date' => now(),
-            'end_date' => now()->addMonths($duration),
-            'status' => 'brouillon',
-            'generated_by' => auth()->id(),
-        ]);
-
-        // Marquer le prospect comme converti
-        $prospect->markAsConverti();
-
-        // Créer les échéances de paiement
-        for ($i = 1; $i <= $duration; $i++) {
-            $contract->paymentSchedules()->create([
-                'installment_number' => $i,
-                'amount' => 0, // ← on met 0 pour afficher '-' au début
-                'due_date' => now()->addMonths($i),
-                'is_paid' => false,
+        try {
+            $contract = $this->contractService->createFromReservation($prospect);
+            
+            return redirect()->route('contracts.show', $contract)
+                ->with('success', 'Contrat généré avec succès. Le prospect a été marqué comme converti.');
+        } catch (\Exception $e) {
+            Log::error('Erreur génération contrat', [
+                'prospect_id' => $prospect->id,
+                'error' => $e->getMessage()
             ]);
+            
+            return back()->with('error', $e->getMessage());
         }
-
-        return redirect()->route('contracts.show', $contract)
-            ->with('success', 'Contrat généré avec succès. Le prospect a été marqué comme converti.');
     }
 
     public function preview(Contract $contract)
@@ -139,30 +113,19 @@ class ContractController extends Controller
     }
     
     /**
-     * Mettre à jour le contenu du contrat
+     * Mettre à jour le contenu du contrat - VERSION OPTIMISÉE
      */
     public function updateContent(Request $request, Contract $contract)
     {
-        // Log de débogage
-        \Log::info('Tentative de mise à jour du contrat', [
+        Log::info('Tentative de mise à jour du contrat', [
             'user_id' => auth()->id(),
             'contract_id' => $contract->id,
-            'has_content' => $request->has('content'),
             'content_length' => $request->has('content') ? strlen($request->content) : 0,
-            'request_headers' => $request->headers->all(),
-            'request_method' => $request->method(),
-            'is_ajax' => $request->ajax(),
-            'wants_json' => $request->wantsJson(),
-            'content_type' => $request->header('Content-Type'),
-            'accept_header' => $request->header('Accept')
         ]);
         
-        // Vérifier si l'utilisateur est authentifié
+        // Vérification d'authentification
         if (!auth()->check()) {
-            \Log::warning('Tentative non autorisée de mise à jour du contenu', [
-                'ip' => $request->ip(),
-                'user_agent' => $request->userAgent()
-            ]);
+            Log::warning('Tentative non autorisée de mise à jour du contenu');
             return response()->json([
                 'success' => false,
                 'message' => 'Non autorisé. Veuillez vous connecter.'
@@ -170,221 +133,103 @@ class ContractController extends Controller
         }
         
         try {
-            // Valider la requête
+            // Validation
             $validated = $request->validate([
                 'content' => 'required|string',
             ]);
             
-            // Nettoyer le contenu HTML pour éviter les problèmes de sécurité
+            // Nettoyage du contenu
             $cleanedContent = htmlspecialchars($validated['content'], 
                 ENT_QUOTES | ENT_HTML5, 
                 'UTF-8', 
-                false // Ne pas double encoder
+                false
             );
             
-            // Log avant la mise à jour
-            \Log::debug('Contenu validé et nettoyé', [
-                'original_length' => strlen($validated['content']),
-                'cleaned_length' => strlen($cleanedContent),
-                'content_preview' => substr($cleanedContent, 0, 100) . '...',
-                'content_has_html' => $cleanedContent !== strip_tags($cleanedContent)
+            // Vérification des changements
+            if ($contract->content === $cleanedContent) {
+                Log::info('Aucune modification détectée');
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Aucune modification détectée. Le contenu est déjà à jour.',
+                    'content' => $contract->content,
+                    'updated_at' => $contract->updated_at->format('Y-m-d H:i:s')
+                ]);
+            }
+            
+            // Mise à jour
+            $contract->update([
+                'content' => $cleanedContent,
+                'updated_at' => now()
             ]);
             
-            // Mise à jour du contenu
-            $contract->content = $cleanedContent;
-            $contract->updated_at = now();
-            $saved = $contract->save();
-            
-            // Vérification après la sauvegarde
-            $contract->refresh();
-            \Log::info('Contrat mis à jour avec succès', [
-                'saved' => $saved,
-                'content_length' => $contract->content ? strlen($contract->content) : 0,
-                'updated_at' => $contract->updated_at,
-                'content_in_db' => $contract->content ? 'oui' : 'non'
+            Log::info('Contrat mis à jour avec succès', [
+                'content_length' => strlen($cleanedContent)
             ]);
             
-            // Réponse JSON avec le contenu mis à jour
             return response()->json([
                 'success' => true,
                 'message' => 'Le contenu du contrat a été mis à jour avec succès.',
                 'content' => $contract->content,
-                'content_length' => $contract->content ? strlen($contract->content) : 0,
                 'updated_at' => $contract->updated_at->format('Y-m-d H:i:s')
             ]);
             
         } catch (\Illuminate\Validation\ValidationException $ve) {
-            // Gestion spécifique des erreurs de validation
-            $errors = $ve->validator->errors()->all();
-            \Log::error('Erreur de validation lors de la mise à jour du contenu', [
-                'errors' => $errors,
-                'request_data' => $request->except(['content']),
-                'content_length' => $request->has('content') ? strlen($request->content) : 0
-            ]);
-            
+            Log::error('Erreur de validation', ['errors' => $ve->validator->errors()->all()]);
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur de validation',
-                'errors' => $errors,
-                'content_length' => $request->has('content') ? strlen($request->content) : 0
+                'errors' => $ve->validator->errors()->all(),
             ], 422);
             
         } catch (\Exception $e) {
-            // Gestion des autres erreurs
-            \Log::error('Erreur lors de la mise à jour du contenu du contrat', [
+            Log::error('Erreur lors de la mise à jour du contenu', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine()
             ]);
             
             return response()->json([
                 'success' => false,
-                'message' => 'Une erreur est survenue lors de la mise à jour du contenu: ' . $e->getMessage(),
-                'error' => $e->getMessage(),
-                'exception' => get_class($e)
+                'message' => 'Une erreur est survenue: ' . $e->getMessage(),
             ], 500);
         }
     }
 
+    /**
+     * Export PDF - VERSION COMPLÈTEMENT RÉÉCRITE ET OPTIMISÉE
+     */
     public function exportPdf(Contract $contract)
     {
-        // Configuration des limites d'exécution
-        set_time_limit(300); // 5 minutes
-        ini_set('memory_limit', '512M'); // Augmentation de la mémoire
+        // Configuration des performances depuis le config
+        set_time_limit(config('contracts.export.max_generation_time', 300));
+        ini_set('memory_limit', config('contracts.export.memory_limit', '512M'));
         
-        // Désactiver le débogage pour améliorer les performances
-        if (function_exists('xdebug_disable')) {
-            xdebug_disable();
-        }
-        
-        // Journalisation pour le débogage
-        \Log::info('Début de la génération du PDF pour le contrat', [
+        Log::info('Génération PDF démarrée', [
             'contract_id' => $contract->id,
-            'has_content_param' => request()->has('content'),
-            'has_stored_content' => !empty($contract->content),
             'client_id' => $contract->client_id
         ]);
         
         try {
-            // Précharger les images en base64 avec gestion d'erreur
-            $images = [];
-            $imageFiles = [
-                'header_image' => public_path('images/yayedia.png'),
-                'footer_image' => public_path('images/footer-image.png'),
-                'watermark_image' => public_path('images/image.png')
-            ];
+            // Précharger les relations nécessaires
+            $contract->load(['client', 'site', 'lot']);
             
-            foreach ($imageFiles as $key => $path) {
-                if (file_exists($path)) {
-                    $images[$key] = 'data:image/png;base64,' . base64_encode(file_get_contents($path));
-                } else {
-                    \Log::warning("Fichier image manquant : " . $path);
-                    $images[$key] = ''; // Valeur par défaut si l'image est manquante
-                }
-            }
-    
-            // Préparer les données de base
-            $data = [
-                'contract' => $contract,
-                'client' => $contract->client, // Ajout du client complet pour la vue
-                'client_name' => request('client_name', $contract->client->full_name),
-                'contract_date' => request('contract_date', $contract->created_at->format('d/m/Y')),
-                'header_image' => $images['header_image'],
-                'footer_image' => $images['footer_image'],
-                'watermark_image' => $images['watermark_image']
-            ];
-    
-            // Journalisation des données de base
-            \Log::debug('Données de base préparées', [
-                'client_name' => $data['client_name'],
-                'contract_date' => $data['contract_date']
-            ]);
-    
-            // Gestion du contenu personnalisé
-            if (request()->has('content') && !empty(trim(request('content')))) {
-                // Nettoyer le contenu HTML
-                $content = trim(request('content'));
-                
-                // Journalisation avant sauvegarde
-                \Log::debug('Contenu personnalisé reçu', [
-                    'content_length' => strlen($content),
-                    'content_preview' => substr(strip_tags($content), 0, 100) . '...'
-                ]);
-                
-                // Sauvegarder le contenu modifié dans la base de données
-                $contract->update([
-                    'content' => $content,
-                    'updated_at' => now()
-                ]);
-                
-                $data['custom_content'] = $content;
-                \Log::info('Contenu personnalisé sauvegardé dans la base de données');
-            } 
-            // Utiliser le contenu sauvegardé s'il existe
-            else if (!empty($contract->content)) {
-                $data['custom_content'] = $contract->content;
-                \Log::info('Utilisation du contenu sauvegardé existant', [
-                    'content_length' => strlen($contract->content)
-                ]);
-            }
+            // Préparer les données pour la vue
+            $data = $this->preparePdfData($contract);
             
-            // Si aucun contenu personnalisé n'est fourni, utiliser le contenu par défaut
-            if (empty($data['custom_content'])) {
-                \Log::info('Aucun contenu personnalisé trouvé, utilisation du contenu par défaut');
-                $defaultContent = view('contracts.default_content', [
-                    'contract' => $contract,
-                    'client' => $contract->client
-                ])->render();
-                
-                // Sauvegarder le contenu par défaut pour une utilisation future
-                $contract->update([
-                    'content' => $defaultContent,
-                    'updated_at' => now()
-                ]);
-                
-                $data['custom_content'] = $defaultContent;
-                \Log::info('Contenu par défaut généré et sauvegardé', [
-                    'content_length' => strlen($defaultContent)
-                ]);
-            }
-            
-            // Journalisation finale des données
-            \Log::debug('Données finales pour la génération du PDF', [
-                'has_custom_content' => !empty($data['custom_content']),
-                'content_length' => !empty($data['custom_content']) ? strlen($data['custom_content']) : 0,
-                'client_name' => $data['client_name'],
-                'contract_date' => $data['contract_date']
-            ]);
-    
-            // Configuration optimisée de DomPDF
+            // Génération du PDF avec configuration optimisée
             $pdf = \PDF::setOptions([
                 'isHtml5ParserEnabled' => true,
-                'isRemoteEnabled' => false,  // Désactivé car on utilise base64 pour les images
-                'isPhpEnabled' => false,     // Désactivé si non nécessaire
+                'isRemoteEnabled' => false,
+                'isPhpEnabled' => false,
                 'isFontSubsettingEnabled' => true,
                 'dpi' => 96,
                 'defaultFont' => 'dejavu sans',
-                // Désactivation complète du débogage
                 'debug' => false,
-                'debugKeepTemp' => false,
-                'debugCss' => false,
-                'debugLayout' => false,
-                'debugLayoutLines' => false,
-                'debugLayoutBlocks' => false,
-                'debugLayoutInline' => false,
-                'debugLayoutPaddingBox' => false,
-                // Optimisations de performance
-                'enableCssFloat' => true,
-                'isJavascriptEnabled' => false,
-                'isHtml5Parser' => true,
-                'isPhpEnabled' => false,
-                'isRemoteEnabled' => false,
-            ])->loadView('contracts.pdf', $data);
+            ])->loadView('contracts.pdf_new', $data);
             
-            // Compression et options de sortie
             $output = $pdf->output();
-            \Log::info('PDF généré avec succès', [
+            
+            Log::info('PDF généré avec succès', [
                 'pdf_size' => strlen($output),
                 'contract_id' => $contract->id
             ]);
@@ -393,146 +238,159 @@ class ContractController extends Controller
                 'Content-Type' => 'application/pdf',
                 'Content-Disposition' => 'inline; filename="contrat_' . $contract->contract_number . '.pdf"',
                 'Content-Transfer-Encoding' => 'binary',
-                'Expires' => '0',
-                'Cache-Control' => 'private, max-age=0, must-revalidate',
-                'Pragma' => 'public',
                 'Content-Length' => strlen($output)
             ]);
             
         } catch (\Exception $e) {
-            // Journalisation de l'erreur
-            \Log::error('Erreur lors de la génération du PDF', [
+            Log::error('Erreur génération PDF', [
                 'contract_id' => $contract->id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'error' => $e->getMessage()
             ]);
             
-            // Rediriger avec un message d'erreur en cas d'échec
-            return back()->with('error', 'Une erreur est survenue lors de la génération du PDF : ' . $e->getMessage());
+            return back()->with('error', 'Erreur lors de la génération du PDF: ' . $e->getMessage());
         }
     }
 
-    public function exportWord(Contract $contract)
+    /**
+     * Préparer les données pour le PDF - MÉTHODE PRIVÉE OPTIMISÉE
+     */
+    private function preparePdfData(Contract $contract)
     {
-        // Récupérer le contenu modifié s'il existe
-        if (request()->has('content')) {
-            $content = request()->input('content');
-            $clientName = request()->input('client_name', $contract->client->full_name);
-            $contractDate = request()->input('contract_date', now()->format('d/m/Y'));
-            
-            // Sauvegarder le contenu modifié dans la base de données
-            $contract->update([
-                'content' => $content,
-                'updated_at' => now()
-            ]);
-            
-            // Mettre à jour les données du contrat avec le contenu modifié
-            $contract->custom_content = $content;
-            $contract->client_name = $clientName;
-            $contract->contract_date = $contractDate;
-        }
+        // Gestion des images avec fallback
+        $images = $this->prepareImages();
         
-        // Charger les données nécessaires pour la vue
-        $contract->load(['client', 'site', 'lot']);
+        $data = [
+            'contract' => $contract,
+            'client' => $contract->client,
+            'header_image' => $images['header'],
+            'footer_image' => $images['footer'],
+            'watermark_image' => $images['watermark']
+        ];
         
-        // Créer un nouveau document Word
-        $phpWord = new PhpWord();
-        
-        // Définir les styles de base
-        $phpWord->setDefaultFontName('Times New Roman');
-        $phpWord->setDefaultFontSize(12);
-        
-        // Configuration de la mise en page
-        $section = $phpWord->addSection([
-            'marginLeft' => 1134,   // 2 cm en twips (1 cm = 567 twips)
-            'marginRight' => 1134,
-            'marginTop' => 1134,
-            'marginBottom' => 1134,
-            'pageSizeW' => 11906,  // Largeur A4 en twips (21cm)
-            'pageSizeH' => 16838   // Hauteur A4 en twips (29.7cm)
+        return $data;
+    }
+
+    /**
+     * Préparer les images pour le PDF
+     */
+    private function prepareImages()
+    {
+        $imageFiles = config('contracts.images', [
+            'header' => 'images/yayedia.png',
+            'footer' => 'images/footer-image.png',
+            'watermark' => 'images/image.png'
         ]);
         
-        // Vérifier si un contenu personnalisé est fourni
-        if (request()->has('content')) {
-            // Utiliser le contenu personnalisé
-            $content = request()->input('content');
-            $clientName = request()->input('client_name', $contract->client->full_name);
-            $contractDate = request()->input('contract_date', now()->format('d/m/Y'));
-            
-            // Ajouter le contenu HTML au document Word
-            \PhpOffice\PhpWord\Shared\Html::addHtml($section, $content, false, true);
-        } else {
-            // Utiliser le contenu par défaut
-            
-            // Ajouter le logo
-            $header = $section->addHeader();
-            $header->addImage(
-                public_path('images/yayedia.png'),
-                [
-                    'width' => 200,
-                    'alignment' => 'center'
-                ]
-            );
-            
-            // Ajouter le titre
-            $section->addText(
-                'CONTRAT DE RÉSERVATION',
-                ['bold' => true, 'size' => 16],
-                ['alignment' => 'center', 'spaceAfter' => 500]
-            );
-            
-            // Ajouter les informations du contrat
-            $section->addText(
-                'Entre les soussignés :',
-                ['bold' => true],
-                ['spaceAfter' => 200]
-            );
-            
-            $section->addText(
-                'La Société YAYE DIA BTP',
-                [],
-                ['spaceAfter' => 200]
-            );
-            
-            $section->addText(
-                'Et M./Mme ' . $contract->client->full_name,
-                [],
-                ['spaceAfter' => 400]
-            );
-            
-            // Ajouter le contenu du contrat
-            $section->addText(
-                'Article 1 - OBJET\n' .
-                'La société YAYE DIA BTP consent à M./Mme ' . $contract->client->full_name . 
-                ' une option de réservation sur le lot n°' . $contract->lot->reference . 
-                ' situé à ' . $contract->site->name . '.',
-                [],
-                ['spaceAfter' => 400]
-            );
-            
-            // Ajouter la signature
-            $section->addText(
-                'Fait à Dakar, le ' . now()->format('d/m/Y') . '\n\n' .
-                'Le Client\n\n\n' .
-                'M./Mme ' . $contract->client->full_name . '\n' .
-                'Pièce d\'identité : ' . $contract->client->id_number . '\n' .
-                'Délivrée le : ' . ($contract->client->id_issue_date ? $contract->client->id_issue_date->format('d/m/Y') : '') . '\n' .
-                'À : ' . $contract->client->id_issue_place . '\n\n' .
-                'Pour YAYE DIA BTP\n\n\n' .
-                'Le Gérant',
-                [],
-                ['spaceAfter' => 0]
-            );
+        $images = [];
+        foreach ($imageFiles as $key => $path) {
+            $fullPath = public_path($path);
+            if (file_exists($fullPath)) {
+                $images[$key] = 'data:image/png;base64,' . base64_encode(file_get_contents($fullPath));
+            } else {
+                Log::warning("Image manquante: " . $path);
+                $images[$key] = '';
+            }
         }
+        
+        return $images;
+    }
 
-        // Enregistrer le document
-        $filename = 'contrat_' . $contract->contract_number . '.docx';
-        $tempFile = tempnam(sys_get_temp_dir(), 'contract_');
+    /**
+     * Export Word - VERSION OPTIMISÉE
+     */
+    public function exportWord(Contract $contract)
+    {
+        try {
+            $contract->load(['client', 'site', 'lot']);
+            
+            $phpWord = new PhpWord();
+            $phpWord->setDefaultFontName('Times New Roman');
+            $phpWord->setDefaultFontSize(12);
+            
+            $section = $phpWord->addSection([
+                'marginLeft' => 1134,
+                'marginRight' => 1134,
+                'marginTop' => 1134,
+                'marginBottom' => 1134,
+            ]);
+            
+            // Contenu personnalisé ou par défaut
+            if (request()->has('content') && !empty(trim(request('content')))) {
+                $content = trim(request('content'));
+                
+                // Sauvegarder seulement si différent
+                if ($contract->content !== $content) {
+                    $contract->update(['content' => $content]);
+                }
+                
+                Html::addHtml($section, $content, false, true);
+            } else {
+                $this->addDefaultWordContent($section, $contract);
+            }
+
+            // Génération du fichier
+            $filename = 'contrat_' . $contract->contract_number . '.docx';
+            $tempFile = tempnam(sys_get_temp_dir(), 'contract_');
+            
+            $objWriter = IOFactory::createWriter($phpWord, 'Word2007');
+            $objWriter->save($tempFile);
+            
+            return response()->download($tempFile, $filename)->deleteFileAfterSend(true);
+            
+        } catch (\Exception $e) {
+            Log::error('Erreur export Word', [
+                'contract_id' => $contract->id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return back()->with('error', 'Erreur lors de l\'export Word: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Ajouter le contenu par défaut au document Word
+     */
+    private function addDefaultWordContent($section, $contract)
+    {
+        // Logo
+        if (file_exists(public_path('images/yayedia.png'))) {
+            $header = $section->addHeader();
+            $header->addImage(public_path('images/yayedia.png'), [
+                'width' => 200,
+                'alignment' => 'center'
+            ]);
+        }
         
-        $objWriter = IOFactory::createWriter($phpWord, 'Word2007');
-        $objWriter->save($tempFile);
+        // Titre
+        $section->addText(
+            'CONTRAT DE RÉSERVATION',
+            ['bold' => true, 'size' => 16],
+            ['alignment' => 'center', 'spaceAfter' => 500]
+        );
         
-        return response()->download($tempFile, $filename)->deleteFileAfterSend(true);
+        // Contenu du contrat
+        $section->addText('Entre les soussignés :', ['bold' => true], ['spaceAfter' => 200]);
+        $section->addText('La Société YAYE DIA BTP', [], ['spaceAfter' => 200]);
+        $section->addText('Et M./Mme ' . $contract->client->full_name, [], ['spaceAfter' => 400]);
+        
+        // Articles
+        $section->addText(
+            'Article 1 - OBJET\n' .
+            'La société YAYE DIA BTP consent à M./Mme ' . $contract->client->full_name . 
+            ' une option de réservation sur le lot n°' . ($contract->lot->reference ?? 'N/A') . 
+            ' situé à ' . ($contract->site->name ?? 'N/A') . '.',
+            [],
+            ['spaceAfter' => 400]
+        );
+        
+        // Signature
+        $section->addText(
+            'Fait à Dakar, le ' . now()->format('d/m/Y') . '\n\n' .
+            'Le Client: ' . $contract->client->full_name . '\n' .
+            'Pour YAYE DIA BTP: Le Gérant',
+            [],
+            ['spaceAfter' => 0]
+        );
     }
 
     public function uploadSignedCopy(Request $request, Contract $contract)
@@ -553,13 +411,12 @@ class ContractController extends Controller
             'signed_by_agent' => auth()->id(),
         ]);
 
-        // Marquer le prospect comme converti si ce n'est pas déjà fait
         if (!$contract->client->isConverti()) {
             $contract->client->markAsConverti();
         }
 
         return redirect()->route('contracts.show', $contract)
-            ->with('success', 'Contrat signé uploadé avec succès. Le prospect a été marqué comme converti.');
+            ->with('success', 'Contrat signé uploadé avec succès.');
     }
 
     public function signContract(Request $request, Contract $contract)
@@ -576,11 +433,10 @@ class ContractController extends Controller
             'notes' => $request->notes,
         ]);
 
-        // Marquer le prospect comme converti
         $contract->client->markAsConverti();
 
         return redirect()->route('contracts.show', $contract)
-            ->with('success', 'Contrat signé avec succès. Le prospect a été marqué comme converti.');
+            ->with('success', 'Contrat signé avec succès.');
     }
 
     public function export()
@@ -612,7 +468,9 @@ class ContractController extends Controller
         exit;
     }
 
-    // ✅ Méthode pour AJAX de paiement
+    /**
+     * Méthode pour AJAX de paiement
+     */
     public function pay(Request $request, $scheduleId)
     {
         $request->validate([
@@ -626,7 +484,6 @@ class ContractController extends Controller
             'paid_date' => now(),
         ]);
 
-        // Met à jour le contrat aussi
         $contract = $schedule->contract;
         $contract->paid_amount += $request->amount;
         $contract->remaining_amount = $contract->total_amount - $contract->paid_amount;
