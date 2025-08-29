@@ -175,12 +175,18 @@ class ContractController extends Controller
                 'content' => 'required|string',
             ]);
             
-            // Nettoyer le contenu HTML pour éviter les problèmes de sécurité
-            $cleanedContent = htmlspecialchars($validated['content'], 
-                ENT_QUOTES | ENT_HTML5, 
-                'UTF-8', 
-                false // Ne pas double encoder
-            );
+            // Nettoyer et valider le contenu HTML
+            $cleanedContent = trim($validated['content']);
+            
+            // Empêcher la sauvegarde de contenu contenant déjà les pages fixes pour éviter la duplication
+            if (strpos($cleanedContent, 'Article 1 : Objet du contrat') !== false || 
+                strpos($cleanedContent, 'Article 2 : Désignation du terrain') !== false) {
+                \Log::warning('Tentative de sauvegarde de contenu contenant les articles fixes - contenu rejeté');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Le contenu ne doit contenir que les informations du client, pas les articles du contrat.'
+                ], 422);
+            }
             
             // Log avant la mise à jour
             \Log::debug('Contenu validé et nettoyé', [
@@ -306,20 +312,28 @@ class ContractController extends Controller
                 // Nettoyer le contenu HTML
                 $content = trim(request('content'));
                 
-                // Journalisation avant sauvegarde
-                \Log::debug('Contenu personnalisé reçu', [
-                    'content_length' => strlen($content),
-                    'content_preview' => substr(strip_tags($content), 0, 100) . '...'
-                ]);
-                
-                // Sauvegarder le contenu modifié dans la base de données
-                $contract->update([
-                    'content' => $content,
-                    'updated_at' => now()
-                ]);
-                
-                $data['custom_content'] = $content;
-                \Log::info('Contenu personnalisé sauvegardé dans la base de données');
+                // Vérifier que le contenu ne contient pas déjà les articles fixes (éviter la duplication)
+                if (strpos($content, 'Article 1 : Objet du contrat') === false && 
+                    strpos($content, 'Article 2 : Désignation du terrain') === false) {
+                    
+                    // Journalisation avant sauvegarde
+                    \Log::debug('Contenu personnalisé reçu et validé', [
+                        'content_length' => strlen($content),
+                        'content_preview' => substr(strip_tags($content), 0, 100) . '...'
+                    ]);
+                    
+                    // Sauvegarder le contenu modifié dans la base de données
+                    $contract->update([
+                        'content' => $content,
+                        'updated_at' => now()
+                    ]);
+                    
+                    $data['custom_content'] = $content;
+                    \Log::info('Contenu personnalisé sauvegardé dans la base de données');
+                } else {
+                    \Log::warning('Contenu personnalisé contient des articles fixes - ignoré pour éviter la duplication');
+                    $data['custom_content'] = $contract->content ?? '';
+                }
             } 
             // Utiliser le contenu sauvegardé s'il existe
             else if (!empty($contract->content)) {
@@ -329,24 +343,10 @@ class ContractController extends Controller
                 ]);
             }
             
-            // Si aucun contenu personnalisé n'est fourni, utiliser le contenu par défaut
+            // Si aucun contenu personnalisé n'est fourni, laisser vide pour utiliser le contenu par défaut du template
             if (empty($data['custom_content'])) {
-                \Log::info('Aucun contenu personnalisé trouvé, utilisation du contenu par défaut');
-                $defaultContent = view('contracts.default_content', [
-                    'contract' => $contract,
-                    'client' => $contract->client
-                ])->render();
-                
-                // Sauvegarder le contenu par défaut pour une utilisation future
-                $contract->update([
-                    'content' => $defaultContent,
-                    'updated_at' => now()
-                ]);
-                
-                $data['custom_content'] = $defaultContent;
-                \Log::info('Contenu par défaut généré et sauvegardé', [
-                    'content_length' => strlen($defaultContent)
-                ]);
+                \Log::info('Aucun contenu personnalisé trouvé, utilisation du contenu par défaut du template');
+                $data['custom_content'] = '';
             }
             
             // Journalisation finale des données
@@ -420,14 +420,20 @@ class ContractController extends Controller
             $clientName = request()->input('client_name', $contract->client->full_name);
             $contractDate = request()->input('contract_date', now()->format('d/m/Y'));
             
-            // Sauvegarder le contenu modifié dans la base de données
-            $contract->update([
-                'content' => $content,
-                'updated_at' => now()
-            ]);
+            // Vérifier que le contenu ne contient pas déjà les articles fixes (éviter la duplication)
+            if (strpos($content, 'Article 1 : Objet du contrat') === false && 
+                strpos($content, 'Article 2 : Désignation du terrain') === false) {
+                
+                // Sauvegarder le contenu modifié dans la base de données
+                $contract->update([
+                    'content' => $content,
+                    'updated_at' => now()
+                ]);
+                
+                // Mettre à jour les données du contrat avec le contenu modifié
+                $contract->custom_content = $content;
+            }
             
-            // Mettre à jour les données du contrat avec le contenu modifié
-            $contract->custom_content = $content;
             $contract->client_name = $clientName;
             $contract->contract_date = $contractDate;
         }

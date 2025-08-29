@@ -88,8 +88,12 @@
                     
                     <!-- Éditeur de contenu (caché par défaut) -->
                     <div id="contractEditor" class="p-4 d-none">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle mr-2"></i>
+                            <strong>Important :</strong> Vous ne pouvez modifier que les informations du client. Les articles du contrat (Article 1, Article 2, etc.) sont fixes et ne peuvent pas être modifiés dans cette section.
+                        </div>
                         <div class="form-group">
-                            <label>Contenu du contrat</label>
+                            <label>Informations personnalisées du client</label>
                             <textarea id="contentEditor" class="form-control" rows="20"></textarea>
                         </div>
                         <div class="text-right mt-3">
@@ -319,22 +323,33 @@ if (typeof jQuery === 'undefined') {
     $(document).ready(function() {
         // Fonction pour mettre à jour les liens d'export
         function updateExportLinks() {
-            const content = $('#contractContent').html();
+            // Extraire seulement le contenu personnalisé (section client)
+            var customContentElement = $('#contractContent').find('.parties');
+            var customContent = '';
+            
+            if (customContentElement.length > 0) {
+                customContent = customContentElement.parent().html() || customContentElement.html();
+            }
+            
             const clientName = $('#clientNameDisplay').text();
             const contractDate = $('#contractDateDisplay').text();
             
-            // Mettre à jour le lien d'export PDF
-            const pdfUrl = '{{ route("contracts.export.pdf", $contract) }}' + 
-                          '?content=' + encodeURIComponent(content) +
-                          '&client_name=' + encodeURIComponent(clientName) +
-                          '&contract_date=' + encodeURIComponent(contractDate);
+            // Mettre à jour le lien d'export PDF (seulement si il y a du contenu personnalisé)
+            var pdfUrl = '{{ route("contracts.export.pdf", $contract) }}';
+            if (customContent.trim() !== '') {
+                pdfUrl += '?content=' + encodeURIComponent(customContent) +
+                         '&client_name=' + encodeURIComponent(clientName) +
+                         '&contract_date=' + encodeURIComponent(contractDate);
+            }
             $('#exportPdfBtn').attr('href', pdfUrl);
             
             // Mettre à jour le lien d'export Word
-            const wordUrl = '{{ route("contracts.export.word", $contract) }}' + 
-                           '?content=' + encodeURIComponent(content) +
-                           '&client_name=' + encodeURIComponent(clientName) +
-                           '&contract_date=' + encodeURIComponent(contractDate);
+            var wordUrl = '{{ route("contracts.export.word", $contract) }}';
+            if (customContent.trim() !== '') {
+                wordUrl += '?content=' + encodeURIComponent(customContent) +
+                          '&client_name=' + encodeURIComponent(clientName) +
+                          '&contract_date=' + encodeURIComponent(contractDate);
+            }
             $('#exportWordBtn').attr('href', wordUrl);
         }
         
@@ -367,7 +382,32 @@ if (typeof jQuery === 'undefined') {
         $('#editContentBtn').on('click', function() {
             $('#contractContent').addClass('d-none');
             $('#contractEditor').removeClass('d-none');
-            $('#contentEditor').summernote('code', $('#contractContent').html());
+            
+            // Extraire seulement la section personnalisable (contenu client)
+            var customContentElement = $('#contractContent').find('.parties');
+            var existingContent = '';
+            
+            if (customContentElement.length > 0) {
+                // Si on trouve la section client, l'extraire
+                existingContent = customContentElement.parent().html() || customContentElement.html();
+            } else {
+                // Sinon, chercher tout contenu après "Et" et avant "Article 1"
+                var fullContent = $('#contractContent').html();
+                var startMarker = fullContent.indexOf('<p class="center"><b>Et</b></p>');
+                var endMarker = fullContent.indexOf('Article 1 : Objet du contrat');
+                
+                if (startMarker !== -1 && endMarker !== -1) {
+                    existingContent = fullContent.substring(startMarker + '<p class="center"><b>Et</b></p>'.length, endMarker);
+                } else if (startMarker !== -1) {
+                    // Si on ne trouve pas "Article 1", prendre jusqu'à la fin de la première page
+                    var endPage1 = fullContent.indexOf('<!-- ========================= PAGE 2');
+                    if (endPage1 !== -1) {
+                        existingContent = fullContent.substring(startMarker + '<p class="center"><b>Et</b></p>'.length, endPage1);
+                    }
+                }
+            }
+            
+            $('#contentEditor').summernote('code', existingContent.trim());
         });
 
         // Annuler les modifications
@@ -386,8 +426,30 @@ if (typeof jQuery === 'undefined') {
                 // Récupérer le contenu modifié
                 var modifiedContent = $('#contentEditor').summernote('code');
                 
-                // Mettre à jour l'affichage
-                $('#contractContent').html(modifiedContent);
+                // Vérifier que le contenu ne contient pas les articles fixes
+                if (modifiedContent.indexOf('Article 1 : Objet du contrat') !== -1 || 
+                    modifiedContent.indexOf('Article 2 : Désignation du terrain') !== -1) {
+                    alert('Erreur : Le contenu ne doit contenir que les informations du client, pas les articles du contrat. Les articles sont déjà inclus dans le template.');
+                    return;
+                }
+                
+                // Mettre à jour l'affichage en remplaçant seulement la section personnalisable
+                var contractContent = $('#contractContent');
+                var currentHtml = contractContent.html();
+                
+                // Trouver et remplacer la section client
+                var startMarker = currentHtml.indexOf('<!-- Affichage du contenu du contrat personnalisé');
+                var endMarker = currentHtml.indexOf('<!-- ========================= PAGE 2');
+                
+                if (startMarker !== -1 && endMarker !== -1) {
+                    var beforeCustom = currentHtml.substring(0, startMarker);
+                    var afterCustom = currentHtml.substring(endMarker);
+                    var newCustomSection = '<!-- Affichage du contenu du contrat personnalisé (section client) -->\n  ' + modifiedContent + '\n\n\n\n\n\n  ';
+                    contractContent.html(beforeCustom + newCustomSection + afterCustom);
+                } else {
+                    // Fallback : remplacer tout le contenu (pas idéal mais fonctionnel)
+                    contractContent.html(modifiedContent);
+                }
                 
                 // Cacher l'éditeur et afficher le contenu
                 $('#contractEditor').addClass('d-none');

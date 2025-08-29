@@ -175,15 +175,47 @@
 
   <p class="center"><b>Et</b></p>
 
-  <!-- Affichage du contenu du contrat -->
+  <!-- Affichage du contenu du contrat personnalisé (section client) -->
   @if(isset($custom_content) && !empty($custom_content))
     {!! $custom_content !!}
   @else
-    <!-- Le contenu par défaut est déjà inclus dans $custom_content par le contrôleur -->
-    <!-- Cette section ne devrait normalement jamais être atteinte -->
-    <div style="color: red; font-weight: bold;">
-      Erreur : Le contenu du contrat est manquant. Veuillez recharger la page.
+    <!-- Contenu par défaut pour la section client -->
+    <div class="parties">
+        <div class="kv">
+            <div><b>Monsieur :</b></div> 
+            <div>{{ $contract->client->full_name }}</div>
+
+            <div><b>Date et lieu de naissance :</b></div> 
+            <div>{{ $contract->client->birth_date ?? 'N/A' }} à {{ $contract->client->birth_place ?? 'N/A' }}</div>
+
+            <div><b>Adresse Personnelle :</b></div> 
+            <div>{{ $contract->client->address ?? 'N/A' }}</div>
+
+            <div><b>Pays de Résidence :</b></div> 
+            <div>{{ $contract->client->country ?? 'N/A' }}</div>
+
+            <div><b>Nationalité :</b></div> 
+            <div>{{ $contract->client->nationality ?? 'N/A' }}</div>
+
+            <div><b>Type et N° de pièce d'identité :</b></div> 
+            <div>{{ $contract->client->id_type ?? 'N/A' }} N° {{ $contract->client->id_number ?? 'N/A' }} délivrée le : {{ $contract->client->id_issue_date ?? 'N/A' }}</div>
+
+            <div><b>Numéro mobile :</b></div> 
+            <div>{{ $contract->client->phone ?? 'N/A' }}</div>
+        </div>
     </div>
+
+    <p class="center"><i>Ci-après dénommé "l'Acquéreur" ou le « Client »</i>,</p>
+
+    <p class="center"><b>IL A ÉTÉ CONVENU CE QUI SUIT :</b></p>
+
+    <p class="article">PRÉAMBULE</p>
+
+    <p>
+        YAYE DIA BTP propose à la commercialisation les terrains issus du lotissement de cette assiette dans
+        le cadre de son projet et le client souhaite en acquérir selon les termes et conditions prévues dans les
+        présentes.
+    </p>
   @endif
 
 
@@ -493,7 +525,7 @@ million cent mille (1 100 000) Francs CFA et d’une mensualité de 245 900 Fran
     </div>
     <div class="sign-box">
       <p><b>Le Client</b></p>
-      <p class="muted">OMAR BADJI</p>
+      <p class="muted">{{ $contract->client->full_name }}</p>
     </div>
   </div>
 
