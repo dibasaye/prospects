@@ -329,8 +329,25 @@ class ContractController extends Controller
                 ]);
             }
             
-            // Le contenu par défaut sera géré directement dans la vue PDF
-            // Pas besoin de générer un contenu par défaut complet ici
+            // Si aucun contenu personnalisé n'est fourni, utiliser le contenu par défaut
+            if (empty($data['custom_content'])) {
+                \Log::info('Aucun contenu personnalisé trouvé, utilisation du contenu par défaut');
+                $defaultContent = view('contracts.default_content', [
+                    'contract' => $contract,
+                    'client' => $contract->client
+                ])->render();
+                
+                // Sauvegarder le contenu par défaut pour une utilisation future
+                $contract->update([
+                    'content' => $defaultContent,
+                    'updated_at' => now()
+                ]);
+                
+                $data['custom_content'] = $defaultContent;
+                \Log::info('Contenu par défaut généré et sauvegardé', [
+                    'content_length' => strlen($defaultContent)
+                ]);
+            }
             
             // Journalisation finale des données
             \Log::debug('Données finales pour la génération du PDF', [
@@ -363,7 +380,7 @@ class ContractController extends Controller
                 'isHtml5Parser' => true,
                 'isPhpEnabled' => false,
                 'isRemoteEnabled' => false,
-            ])->loadView('contracts.pdf_new', $data);
+            ])->loadView('contracts.pdf', $data);
             
             // Compression et options de sortie
             $output = $pdf->output();
